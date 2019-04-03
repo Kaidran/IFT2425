@@ -1,7 +1,7 @@
 //------------------------------------------------------
 // module  : Tp4-IFT2425-1.c
-// author  : 
-// date    : 
+// author  : Andre Lalonde - Elizabeth Michel
+// date    : 02/04/2019
 // version : 1.0
 // language: C++
 // note    :
@@ -34,7 +34,7 @@ GC	  gc;
 // DEFINITIONS -----------------------------------                       
 //------------------------------------------------
 #define CARRE(X) ((X)*(X))
-
+#define CUBE(X) ((X)*(X)*(X))
 #define OUTPUT_FILE "Tp4-Img-I.pgm"
 #define VIEW_PGM    "xv" 
 #define DEBUG 0
@@ -353,11 +353,72 @@ void Fill_Pict(float** MatPts,float** MatPict,int PtsNumber,int NbPts)
          MatPict[y_co][x_co]=BLACK; }
 }
 
-
+//------------------------------------------------
+// Prototype de Fonctions ------------------------
+//------------------------------------------------
+float f(float,float);
+float sumx(float,float);
+float sumy(float,float);
+float k1(float,float);
+float k2(float,float);
+float k3(float,float);
+float k4(float,float);
+float k5(float,float);
+float k6(float,float);
+float x_n_plus1(float,float);
 //------------------------------------------------
 // FONCTIONS TPs----------------------------------                      
 //------------------------------------------------
-      
+
+float f(float xn, float yn) {
+  return xn;
+}
+
+float sumx(float x, float y) {
+  float sum1 = (x - X_1) / CUBE(sqrt((x - X_1) + (y - Y_1) + CARRE(D)));
+  float sum2 = (x - X_2) / CUBE(sqrt((x - X_2) + (y - Y_2) + CARRE(D)));
+  float sum3 = (x - X_3) / CUBE(sqrt((x - X_3) + (y - Y_3) + CARRE(D)));
+  return sum1+sum2+sum3;
+}
+
+float sumy(float x, float y) {
+  float sum1 = (y - Y_1) / CUBE(sqrt((x - X_1) + (y - Y_1) + CARRE(D)));
+  float sum2 = (y - Y_2) / CUBE(sqrt((x - X_2) + (y - Y_2) + CARRE(D)));
+  float sum3 = (y - Y_3) / CUBE(sqrt((x - X_3) + (y - Y_3) + CARRE(D)));
+  return sum1+sum2+sum3;
+}
+
+float k1(float t, float xn) {
+  return H * f(t,xn);
+}
+
+float k2(float t, float xn) {
+  return H * f(t + H/4, xn + k1(t,xn)/4);
+}
+
+float k3(float t, float xn) {
+  return H * f(t + 3.0*H/8, xn + 3.0*k1(t,xn)/32 + 9.0*k2(t,xn)/32);
+}
+
+float k4(float t, float xn) {
+  return H * f(t + 12.0*H/13, xn + 1932.0*k1(t,xn)/2197 
+           - 7200.0*k2(t,xn)/2197 + 7296.0*k3(t,xn)/2197);
+}
+
+float k5(float t, float xn) {
+  return H * f(t + H, xn + 439.0*k1(t,xn)/216 - 8.0*k2(t,xn) 
+           + 3680.0*k3(t,xn)/513 - 845.0*k4(t,xn)/4104);
+}
+
+float k6(float t, float xn) {
+  return H * f(t + H/2, xn - 8.0*k1(t,xn)/27 + 2*k2(t,xn) 
+         - 3544.0*k3(t,xn)/2565 + 1859.0*k4(t,xn)/4104 - 11.0*k5(t,xn)/40);
+}
+
+float x_n_plus1(float t, float xn) {
+  return xn + 16*k1(t,xn)/135 + 6656*k3(t,xn)/12825 
+         + 28561*k4(t,xn)/56430 - 9*k5(t,xn)/50 - 2*k6(t,xn)/55;
+}
 
 //----------------------------------------------------------
 //----------------------------------------------------------
@@ -397,14 +458,17 @@ int main (int argc, char **argv)
   //par une courbe donné par l'équation d'en bas... et non pas par 
   //la solution de l'équation différentielle
  
+ 
   for(k=0;k<(int)(NB_INTERV);k++)
     { 
       MatPts[k][0]=(k/(float)(NB_INTERV))*cos((k*0.0001)*3.14159); 
       MatPts[k][1]=(k/(float)(NB_INTERV))*sin((k*0.001)*3.14159); 
       //>on peut essayer la ligne d'en bas aussi
       //MatPts[k][1]=(k/(float)(NB_INTERV))*sin((k*0.0001)*3.14159); 
-     }
-
+    }
+/* 
+    
+*/
 
   //--Fin Question 1-----------------------------------------------------
 
@@ -455,7 +519,3 @@ int main (int argc, char **argv)
  printf("\n Fini... \n\n\n");
  return 0;
 }
-
-
-
-
