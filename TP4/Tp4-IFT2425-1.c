@@ -74,6 +74,17 @@ GC	  gc;
 #define GREYDARK  120
 #define BLACK       0   
 
+struct pos { 
+  float x;
+  float y; 
+};
+
+struct speed {
+  float x;
+  float y;
+};
+
+#define float double
 //------------------------------------------------
 // GLOBAL CST ------------------------------------                       
 //------------------------------------------------
@@ -356,68 +367,78 @@ void Fill_Pict(float** MatPts,float** MatPict,int PtsNumber,int NbPts)
 //------------------------------------------------
 // Prototype de Fonctions ------------------------
 //------------------------------------------------
-float f(float,float);
-float sumx(float,float);
-float sumy(float,float);
-float k1(float,float);
-float k2(float,float);
-float k3(float,float);
-float k4(float,float);
-float k5(float,float);
-float k6(float,float);
-float x_n_plus1(float,float);
+
+float sumxy(float,float,float*,float*);
+pos x_n_plus1(speed,pos);
+float acceleration(float,float,float,float*,float*);
+
 //------------------------------------------------
 // FONCTIONS TPs----------------------------------                      
 //------------------------------------------------
 
-float f(float xn, float yn) {
-  return xn;
+
+/*
+void acceleration(accel acc, speed vt, pos p) {
+  acc.x = -(R * vt.x - sumxy(p.x, p.y) + C * p.x);
+  acc.y = -(R * vt.y - sumxy(p.y, p.x) + C * p.y);
+}
+*/
+
+float acceleration(float s, float p1, float p2, float* arrx, float* arry) {
+  return -(R * s - sumxy(p1,p2,arrx,arry) + C * p1);
 }
 
-float sumx(float x, float y) {
-  float sum1 = (x - X_1) / CUBE(sqrt((x - X_1) + (y - Y_1) + CARRE(D)));
-  float sum2 = (x - X_2) / CUBE(sqrt((x - X_2) + (y - Y_2) + CARRE(D)));
-  float sum3 = (x - X_3) / CUBE(sqrt((x - X_3) + (y - Y_3) + CARRE(D)));
+/* calculate the sum for accel on one coordinates.
+   for values in respect to y, just send sum(y,x) */
+float sumxy(float x, float y, float* arrx, float* arry) {
+  float sum1 = (arrx[0] - x) / CUBE(sqrt(CARRE(arrx[0] - x) + CARRE(arry[0] - y) + CARRE(D)));
+  float sum2 = (arrx[1] - x) / CUBE(sqrt(CARRE(arrx[1] - x) + CARRE(arry[1] - y) + CARRE(D)));
+  float sum3 = (arrx[2] - x) / CUBE(sqrt(CARRE(arrx[2] - x) + CARRE(arry[2] - y) + CARRE(D)));
   return sum1+sum2+sum3;
 }
 
-float sumy(float x, float y) {
-  float sum1 = (y - Y_1) / CUBE(sqrt((x - X_1) + (y - Y_1) + CARRE(D)));
-  float sum2 = (y - Y_2) / CUBE(sqrt((x - X_2) + (y - Y_2) + CARRE(D)));
-  float sum3 = (y - Y_3) / CUBE(sqrt((x - X_3) + (y - Y_3) + CARRE(D)));
-  return sum1+sum2+sum3;
-}
+pos x_n_plus1(speed s, pos p) {
+  int i;
+  float x, y, v, k;
+  float arrx[3] = {X_1, X_2, X_3};
+  float arry[3] = {Y_1, Y_2, Y_3};
+  for (i=0;i<2;i++) {
+    if (i == 0) 
+    {
+      x = p.x;  y = p.y;  v = s.x;
+    }
+    else 
+    {
+      x = p.y;  y = p.x;  v = s.y;
+      float tmp[3] = {X_1, X_2, X_3};
+      arrx[0] = arry[0]; arrx[1] = arry[1]; arrx[2] = arry[2];
+      arry[0] = tmp[0]; arry[1] = tmp[1]; arry[2] = tmp[2];
+    }
+    float k1 = H * v;
+    float k2 = H * (v + (H/4.0) * 
+               acceleration(v, x + k1/4.0, y, arrx, arry));
+    float k3 = H * (v + (3.0*H/8.0) * 
+               acceleration(v, x + 3.0*k1/32.0 + 9.0*k2/32.0, y, arrx, arry));
+    float k4 = H * (v + (12.0*H/13.0) * 
+               acceleration(v, x + 1932.0*k1/2197.0 - 7200.0*k2/2197.0 + 7296.0*k3/2197.0, y, arrx, arry));
+    float k5 = H * (v + H * 
+               acceleration(v, x + 439.0*k1/216.0 - 8.0*k2 + 3680.0*k3/513.0 
+                                 - 845.0*k4/4104.0, y, arrx, arry));
+    float k6 = H * (v + (H/2.0) * 
+               acceleration(v, x - 8.0*k1/27.0 + 2.0*k2 - 3544.0*k3/2565.0 
+                                 + 1859.0*k4/4104.0 - 11.0*k5/40.0, y, arrx, arry));
 
-float k1(float t, float xn) {
-  return H * f(t,xn);
-}
-
-float k2(float t, float xn) {
-  return H * f(t + H/4, xn + k1(t,xn)/4);
-}
-
-float k3(float t, float xn) {
-  return H * f(t + 3.0*H/8, xn + 3.0*k1(t,xn)/32 + 9.0*k2(t,xn)/32);
-}
-
-float k4(float t, float xn) {
-  return H * f(t + 12.0*H/13, xn + 1932.0*k1(t,xn)/2197 
-           - 7200.0*k2(t,xn)/2197 + 7296.0*k3(t,xn)/2197);
-}
-
-float k5(float t, float xn) {
-  return H * f(t + H, xn + 439.0*k1(t,xn)/216 - 8.0*k2(t,xn) 
-           + 3680.0*k3(t,xn)/513 - 845.0*k4(t,xn)/4104);
-}
-
-float k6(float t, float xn) {
-  return H * f(t + H/2, xn - 8.0*k1(t,xn)/27 + 2*k2(t,xn) 
-         - 3544.0*k3(t,xn)/2565 + 1859.0*k4(t,xn)/4104 - 11.0*k5(t,xn)/40);
-}
-
-float x_n_plus1(float t, float xn) {
-  return xn + 16*k1(t,xn)/135 + 6656*k3(t,xn)/12825 
-         + 28561*k4(t,xn)/56430 - 9*k5(t,xn)/50 - 2*k6(t,xn)/55;
+    k = 16.0*k1/135.0 
+      + 6656.0*k3/12825.0 
+      + 28561.0*k4/56430.0
+      - 9.0*k5/50.0 
+      + 2.0*k6/55.0;
+    if (i == 0)
+      p.x = p.x + k;
+    else
+      p.y = p.y + k;
+  }
+  return p;
 }
 
 //----------------------------------------------------------
@@ -458,13 +479,25 @@ int main (int argc, char **argv)
   //par une courbe donné par l'équation d'en bas... et non pas par 
   //la solution de l'équation différentielle
  
- 
-  for(k=0;k<(int)(NB_INTERV);k++)
+  pos p;
+  speed v;
+  // init values at t = 0
+  MatPts[0][0] = 0.2;
+  MatPts[0][1] = -1.6;
+  v.x = 0.0;
+  v.y = 0.0;
+  p.x = MatPts[0][0];
+  p.y = MatPts[0][1];
+  for(k=1;k<(int)(NB_INTERV);k++)
     { 
-      MatPts[k][0]=(k/(float)(NB_INTERV))*cos((k*0.0001)*3.14159); 
-      MatPts[k][1]=(k/(float)(NB_INTERV))*sin((k*0.001)*3.14159); 
-      //>on peut essayer la ligne d'en bas aussi
-      //MatPts[k][1]=(k/(float)(NB_INTERV))*sin((k*0.0001)*3.14159); 
+      p = x_n_plus1(v,p);
+      MatPts[k][0] = p.x;
+      MatPts[k][1] = p.y;
+      float xarr[3] = {X_1, X_2, X_3};
+      float yarr[3] = {Y_1, Y_2, Y_3};
+      v.x = v.x + H * acceleration(v.x, p.x, p.y, xarr, yarr);
+      v.y = v.y + H * acceleration(v.y, p.y, p.x, yarr, xarr);
+      //printf("%f %f\n", MatPts[k][0], MatPts[k][1]);
     }
 /* 
     
