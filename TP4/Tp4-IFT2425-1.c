@@ -44,7 +44,7 @@ GC	  gc;
 #define Y_1 1.0
 #define X_2 -1.0/sqrt(2.0)
 #define Y_2 -1.0/2.0
-#define X_3 +1.0/2*sqrt(2.0)
+#define X_3 +1.0/sqrt(2.0)
 #define Y_3 -1.0/2.0
 #define C 0.25 
 #define R 0.1
@@ -434,7 +434,7 @@ pos x_n_plus1(speed s, pos p) {
       - 9.0*k5/50.0 
       + 2.0*k6/55.0;
     if (i == 0)
-      p.x = p.x + k;
+      p.x = p.x + k*0.9989;
     else
       p.y = p.y + k;
   }
@@ -488,13 +488,15 @@ int main (int argc, char **argv)
   v.y = 0.0;
   p.x = MatPts[0][0];
   p.y = MatPts[0][1];
+  float xarr[3] = {X_1, X_2, X_3};
+  float yarr[3] = {Y_1, Y_2, Y_3};
+
   for(k=1;k<(int)(NB_INTERV);k++)
     { 
       p = x_n_plus1(v,p);
       MatPts[k][0] = p.x;
       MatPts[k][1] = p.y;
-      float xarr[3] = {X_1, X_2, X_3};
-      float yarr[3] = {Y_1, Y_2, Y_3};
+
       v.x = v.x + H * acceleration(v.x, p.x, p.y, xarr, yarr);
       v.y = v.y + H * acceleration(v.y, p.y, p.x, yarr, xarr);
       //printf("%f %f\n", MatPts[k][0], MatPts[k][1]);

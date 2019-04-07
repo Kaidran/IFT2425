@@ -33,7 +33,7 @@ GC	  gc;
 // DEFINITIONS -----------------------------------                       
 //------------------------------------------------
 #define CARRE(X) ((X)*(X))
-
+#define CUBE(X) ((X)*(X)*(X))
 #define OUTPUT_FILE "Tp4-Img-II"
 #define VIEW_PGM    "xv" 
 
@@ -71,6 +71,17 @@ GC	  gc;
 #define GREYDARK  120
 #define BLACK       0   
 
+struct pos { 
+  float x;
+  float y; 
+};
+
+struct speed {
+  float x;
+  float y;
+};
+
+//#define float double
 //------------------------------------------------
 // GLOBAL CST ------------------------------------                       
 //------------------------------------------------
@@ -469,12 +480,101 @@ void Fill_Pict(float** MatPts,float** MatPict,int PtsNumber,int NbPts)
          MatPict[y_co][x_co]=BLACK; }
 }
 
+//------------------------------------------------
+// Prototype de Fonctions ------------------------
+//------------------------------------------------
+
+float sumxy(float,float,float*,float*);
+pos x_n_plus1(speed,pos);
+float acceleration(float,float,float,float*,float*);
 
 //------------------------------------------------
 // FONCTIONS TPs----------------------------------                      
 //------------------------------------------------
 
 
+/*
+void acceleration(accel acc, speed vt, pos p) {
+  acc.x = -(R * vt.x - sumxy(p.x, p.y) + C * p.x);
+  acc.y = -(R * vt.y - sumxy(p.y, p.x) + C * p.y);
+}
+*/
+
+float acceleration(float s, float p1, float p2, float* arrx, float* arry) {
+  return -(R * s - sumxy(p1,p2,arrx,arry) + C * p1);
+}
+
+/* calculate the sum for accel on one coordinates.
+   for values in respect to y, just send sum(y,x) */
+float sumxy(float x, float y, float* arrx, float* arry) {
+  float sum1 = (arrx[0] - x) / CUBE(sqrt(CARRE(arrx[0] - x) + CARRE(arry[0] - y) + CARRE(D)));
+  float sum2 = (arrx[1] - x) / CUBE(sqrt(CARRE(arrx[1] - x) + CARRE(arry[1] - y) + CARRE(D)));
+  float sum3 = (arrx[2] - x) / CUBE(sqrt(CARRE(arrx[2] - x) + CARRE(arry[2] - y) + CARRE(D)));
+  return sum1+sum2+sum3;
+}
+
+pos x_n_plus1(speed s, pos p) {
+  int i;
+  float x, y, v, k;
+  float arrx[3] = {X_1, X_2, X_3};
+  float arry[3] = {Y_1, Y_2, Y_3};
+  for (i=0;i<2;i++) {
+    if (i == 0) 
+    {
+      x = p.x;  y = p.y;  v = s.x;
+    }
+    else 
+    {
+      x = p.y;  y = p.x;  v = s.y;
+      float tmp[3] = {X_1, X_2, X_3};
+      arrx[0] = arry[0]; arrx[1] = arry[1]; arrx[2] = arry[2];
+      arry[0] = tmp[0]; arry[1] = tmp[1]; arry[2] = tmp[2];
+    }
+    float k1 = H * v;
+    float k2 = H * (v + (H/4.0) * 
+               acceleration(v, x + k1/4.0, y, arrx, arry));
+    float k3 = H * (v + (3.0*H/8.0) * 
+               acceleration(v, x + 3.0*k1/32.0 + 9.0*k2/32.0, y, arrx, arry));
+    float k4 = H * (v + (12.0*H/13.0) * 
+               acceleration(v, x + 1932.0*k1/2197.0 - 7200.0*k2/2197.0 + 7296.0*k3/2197.0, y, arrx, arry));
+    float k5 = H * (v + H * 
+               acceleration(v, x + 439.0*k1/216.0 - 8.0*k2 + 3680.0*k3/513.0 
+                                 - 845.0*k4/4104.0, y, arrx, arry));
+    float k6 = H * (v + (H/2.0) * 
+               acceleration(v, x - 8.0*k1/27.0 + 2.0*k2 - 3544.0*k3/2565.0 
+                                 + 1859.0*k4/4104.0 - 11.0*k5/40.0, y, arrx, arry));
+
+    k = 16.0*k1/135.0 
+      + 6656.0*k3/12825.0 
+      + 28561.0*k4/56430.0
+      - 9.0*k5/50.0 
+      + 2.0*k6/55.0;
+    if (i == 0)
+      p.x = p.x + k;
+    else
+      p.y = p.y + k;
+  }
+  return p;
+}
+
+float distance(float x, float x0, float y, float y0) {
+  return fabs(x - x0) + fabs(y - y0);
+}
+
+int nearestMagnet(float x, float y, float* xArr, float* yArr) {
+  int i = 0;
+  float d = distance(x,xArr[0],y,yArr[0]);
+  float smallD = d;
+  float smallDIndex = i;
+  for (i=1; i < 3; i++) {
+    d = distance(x,xArr[i],y,yArr[i]);
+    if (d <= smallD) {
+      smallD = d;
+      smallDIndex = i;
+    }
+  }
+  return smallDIndex;
+}
 //----------------------------------------------------------
 //----------------------------------------------------------
 // MAIN  
@@ -519,12 +619,60 @@ int main (int argc, char **argv)
   //Un exemple ou la matrice de points MatPict est remplie
   //par une image en niveaux de gris  donné par l'équation d'en bas... et non pas par 
   //la vitesse de convergence
+  pos p;
+  speed v;
+  v.x = 0.0; v.y = 0.0;
+  float color;
+  int nMagnetI;
+  float nMagnetD;
+  int inRange;
+  int cMagnetI;
+  int converging = 0;
 
+  float xarr[3] = {X_1, X_2, X_3};
+  float yarr[3] = {Y_1, Y_2, Y_3};
+
+  for (i=0; i < HEIGHT; i++) {
+    for (j=0; j < WIDTH; j++) {
+      p.x = (j / (float)HEIGHT) * MAX_X - MAX_X / 2.0;
+      p.y = (1.0 - i /  (float)WIDTH) * MAX_Y - MAX_Y / 2.0;
+
+      nMagnetI = nearestMagnet(p.x,p.y,xarr,yarr);
+      nMagnetD = distance(p.x,xarr[nMagnetI],p.y,yarr[nMagnetI]);
+      inRange = nMagnetD < 0.5;
+
+      for(k=1;k<(int)(NB_INTERV);k++)
+        { 
+          p = x_n_plus1(v,p);
+
+          v.x = v.x + H * acceleration(v.x, p.x, p.y, xarr, yarr);
+          v.y = v.y + H * acceleration(v.y, p.y, p.x, yarr, xarr);
+          cMagnetI = nearestMagnet(p.x,p.y,xarr,yarr);
+          if (cMagnetI != nMagnetI) {
+            nMagnetI = cMagnetI;
+            converging = 0;
+          }
+          nMagnetD = distance(p.x,xarr[cMagnetI],p.y,yarr[cMagnetI]);
+          if (nMagnetD >= 0.5) {
+            converging = 0;
+          } else {
+            converging++;
+          }
+        }
+        color = converging > 20 ? 255 - converging : 255;
+        MatPict[0][i][j] = MatPict[1][i][j] = MatPict[2][i][j] = color;
+    }
+  }
+
+
+
+
+/*
   for(k=0;k<TROIS;k++) for(i=0;i<HEIGHT;i++) for(j=0;j<WIDTH;j++) 
      {  MatPict[0][i][j]=(i+j*k*i)%255; 
         MatPict[1][i][j]=(i+j*k*i)%255;
         MatPict[2][i][j]=(i+j*k*i)%255;  }
-
+*/
  
    //--Fin Question 2-----------------------------------------------------
 
